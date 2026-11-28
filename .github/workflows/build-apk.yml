@@ -221,6 +221,7 @@ jobs:
           imports = [
               "import android.Manifest",
               "import android.webkit.GeolocationPermissions",
+              "import android.webkit.WebChromeClient",
           ]
           marker = "import androidx.activity.result.contract.ActivityResultContracts\n"
           if marker not in source:
