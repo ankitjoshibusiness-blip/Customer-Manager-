@@ -38,6 +38,7 @@ export function App() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [avatarUrls, setAvatarUrls] = useState<Record<number, string>>({});
   const [exportingZip, setExportingZip] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const lastActivityRef = useRef<number>(Date.now());
 
@@ -56,6 +57,10 @@ export function App() {
       } else if (activeView !== 'dashboard') {
         event.preventDefault();
         setActiveView('dashboard');
+      } else {
+        // On the dashboard, ask before allowing Android to close the app.
+        event.preventDefault();
+        setShowExitConfirm(true);
       }
     };
     window.addEventListener('androidback', handleAndroidBack);
@@ -605,6 +610,23 @@ export function App() {
           }}
           onSave={handleSaveCustomer}
         />
+      )}
+
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[100] bg-black/55 flex items-center justify-center p-5" role="dialog" aria-modal="true" aria-labelledby="exit-confirm-title">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+            <h2 id="exit-confirm-title" className="text-base font-bold text-[#211936]">Exit Customer Manager?</h2>
+            <p className="mt-2 text-sm text-[#625A78]">Are you sure you want to close the app?</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowExitConfirm(false)} className="px-4 py-2 rounded-xl border border-[#E3D9F4] text-sm font-semibold text-[#625A78]">Cancel</button>
+              <button type="button" onClick={() => {
+                const nativeApp = (window as Window & { AndroidApp?: { exitApp?: () => void } }).AndroidApp;
+                if (nativeApp?.exitApp) nativeApp.exitApp();
+                else setShowExitConfirm(false);
+              }} className="px-4 py-2 rounded-xl bg-[#7042C1] text-sm font-semibold text-white">Exit</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Security Gate Overlay (keeps workspace state mounted beneath lock screen) */}
