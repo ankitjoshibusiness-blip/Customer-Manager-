@@ -255,12 +255,6 @@ jobs:
                   raise SystemExit("Could not find MainActivity property insertion point for location/exit bridges")
               source = source.replace(launcher_marker, geo_properties + launcher_marker, 1)
 
-          if "webView.settings.setGeolocationEnabled(true)" not in source:
-              settings_marker = "webView.settings.javaScriptEnabled = true"
-              if settings_marker not in source:
-                  raise SystemExit("Could not find WebView JavaScript settings to enable geolocation")
-              source = source.replace(settings_marker, settings_marker + "\n            webView.settings.setGeolocationEnabled(true)", 1)
-
           geo_override = '''
                       override fun onGeolocationPermissionsShowPrompt(
                           origin: String?,
@@ -285,21 +279,15 @@ jobs:
                       }
 
           '''
-          if "override fun onGeolocationPermissionsShowPrompt" not in source:
-              import re
+          import re
+          chrome = re.search(r'((?:webView\.)?webChromeClient\s*=\s*object\s*:\s*WebChromeClient[(][)]\s*[{])', source)
+          if not chrome:
+              raise SystemExit("Could not locate the existing WebChromeClient object for geolocation permission handling")
+          if "webView.settings.setGeolocationEnabled(true)" not in source:
+              source = source[:chrome.start()] + "webView.settings.setGeolocationEnabled(true)\\n            " + source[chrome.start():]
               chrome = re.search(r'((?:webView\.)?webChromeClient\s*=\s*object\s*:\s*WebChromeClient[(][)]\s*[{])', source)
-              if chrome:
-                  source = source[:chrome.end()] + "\n" + geo_override + source[chrome.end():]
-              else:
-                  # No existing WebChromeClient: install one for the native location callback.
-                  setting_line = "webView.settings.setGeolocationEnabled(true)"
-                  if setting_line not in source:
-                      raise SystemExit("Could not find WebView location settings insertion point")
-                  assignment = '''
-                      webView.webChromeClient = object : WebChromeClient() {
-          ''' + geo_override + '''                      }
-          '''
-                  source = source.replace(setting_line, setting_line + "\n" + assignment, 1)
+          if "override fun onGeolocationPermissionsShowPrompt" not in source:
+              source = source[:chrome.end()] + "\\n" + geo_override + source[chrome.end():]
 
           # Register only foreground location access; do not request location at app launch.
           manifest = app / "src/main/AndroidManifest.xml"
