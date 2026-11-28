@@ -284,10 +284,10 @@ jobs:
           if not chrome:
               raise SystemExit("Could not locate the existing WebChromeClient object for geolocation permission handling")
           if "webView.settings.setGeolocationEnabled(true)" not in source:
-              source = source[:chrome.start()] + "webView.settings.setGeolocationEnabled(true)\\n            " + source[chrome.start():]
+              source = source[:chrome.start()] + "webView.settings.setGeolocationEnabled(true)\n            " + source[chrome.start():]
               chrome = re.search(r'((?:webView\.)?webChromeClient\s*=\s*object\s*:\s*WebChromeClient[(][)]\s*[{])', source)
           if "override fun onGeolocationPermissionsShowPrompt" not in source:
-              source = source[:chrome.end()] + "\\n" + geo_override + source[chrome.end():]
+              source = source[:chrome.end()] + "\n" + geo_override + source[chrome.end():]
 
           # Register only foreground location access; do not request location at app launch.
           manifest = app / "src/main/AndroidManifest.xml"
