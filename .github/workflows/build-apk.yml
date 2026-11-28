@@ -68,31 +68,23 @@ jobs:
           import sys
           p = Path(sys.argv[1])
           source = p.read_text()
-          old = '''        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-                    override fun handleOnBackPressed() {
-                        if (webView.canGoBack()) {
-                            webView.goBack()
-                        } else {
-                            isEnabled = false
-                            onBackPressedDispatcher.onBackPressed()
-                        }
-                    }
-                })'''
+          start = source.index("        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {")
+          end = source.index("\\n\\n        // Loads local bundled assets", start)
           new = '''        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-                    override fun handleOnBackPressed() {
-                        webView.evaluateJavascript(
-                            "(function(){var e=new Event('androidback',{cancelable:true});window.dispatchEvent(e);return e.defaultPrevented;})()"
-                        ) { handled ->
-                            if (handled == "true") return@evaluateJavascript
-                            if (webView.canGoBack()) webView.goBack() else {
-                                isEnabled = false
-                                onBackPressedDispatcher.onBackPressed()
-                            }
-                        }
-                    }
-                })'''
-          if old not in source:
-              raise SystemExit("Expected Android Back callback was not found; refusing an unsafe patch")
+              override fun handleOnBackPressed() {
+                  webView.evaluateJavascript(
+                      "(function(){var e=new Event('androidback',{cancelable:true});window.dispatchEvent(e);return e.defaultPrevented;})()"
+                  ) { handled ->
+                      if (handled == "true") return@evaluateJavascript
+                      if (webView.canGoBack()) webView.goBack() else {
+                          isEnabled = false
+                          onBackPressedDispatcher.onBackPressed()
+                      }
+                  }
+              }
+          })'''
+          source = source.replace("val granted = results.values.any { it }", "val granted = results.isNotEmpty() && results.values.all { it }", 1)
+          source = source[:start] + new + source[end:]
           p.write_text(source.replace(old, new, 1))
           PY
 
