@@ -222,12 +222,12 @@ jobs:
               "import android.Manifest",
               "import android.webkit.GeolocationPermissions",
           ]
-          marker = "import androidx.activity.result.contract.ActivityResultContracts\\n"
+          marker = "import androidx.activity.result.contract.ActivityResultContracts\n"
           if marker not in source:
               raise SystemExit("Could not find ActivityResultContracts import for location permission launcher")
           for item in imports:
               if item not in source:
-                  source = source.replace(marker, marker + item + "\\n", 1)
+                  source = source.replace(marker, marker + item + "\n", 1)
 
           if "private val geolocationPermissionLauncher" not in source:
               geo_properties = '''
@@ -258,7 +258,7 @@ jobs:
               settings_marker = "webView.settings.javaScriptEnabled = true"
               if settings_marker not in source:
                   raise SystemExit("Could not find WebView JavaScript settings to enable geolocation")
-              source = source.replace(settings_marker, settings_marker + "\\n            webView.settings.setGeolocationEnabled(true)", 1)
+              source = source.replace(settings_marker, settings_marker + "\n            webView.settings.setGeolocationEnabled(true)", 1)
 
           geo_override = '''
                       override fun onGeolocationPermissionsShowPrompt(
@@ -286,9 +286,9 @@ jobs:
           '''
           if "override fun onGeolocationPermissionsShowPrompt" not in source:
               import re
-              chrome = re.search(r'((?:webView\\.)?webChromeClient\\s*=\\s*object\\s*:\\s*WebChromeClient\\(\\)\\s*\\{)', source)
+              chrome = re.search(r'((?:webView\.)?webChromeClient\s*=\s*object\s*:\s*WebChromeClient\\(\\)\s*\\{)', source)
               if chrome:
-                  source = source[:chrome.end()] + "\\n" + geo_override + source[chrome.end():]
+                  source = source[:chrome.end()] + "\n" + geo_override + source[chrome.end():]
               else:
                   # No existing WebChromeClient: install one for the native location callback.
                   setting_line = "webView.settings.setGeolocationEnabled(true)"
@@ -298,7 +298,7 @@ jobs:
                       webView.webChromeClient = object : WebChromeClient() {
           ''' + geo_override + '''                      }
           '''
-                  source = source.replace(setting_line, setting_line + "\\n" + assignment, 1)
+                  source = source.replace(setting_line, setting_line + "\n" + assignment, 1)
 
           # Register only foreground location access; do not request location at app launch.
           manifest = app / "src/main/AndroidManifest.xml"
@@ -306,15 +306,15 @@ jobs:
           if "android.permission.ACCESS_FINE_LOCATION" not in manifest_text:
               manifest_text = manifest_text.replace(
                   "<application",
-                  '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\\n'
-                  '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n'
+                  '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
+                  '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
                   '<application',
                   1
               )
               manifest.write_text(manifest_text)
 
           bridge_marker = '            addJavascriptInterface(AndroidDocumentScanner(), "AndroidDocumentScanner")'
-          app_bridge = bridge_marker + '\\n            addJavascriptInterface(AndroidApp(), "AndroidApp")'
+          app_bridge = bridge_marker + '\n            addJavascriptInterface(AndroidApp(), "AndroidApp")'
           if 'addJavascriptInterface(AndroidApp(), "AndroidApp")' not in source:
               if bridge_marker not in source:
                   raise SystemExit("Could not find JavaScript bridge insertion point for app exit")
