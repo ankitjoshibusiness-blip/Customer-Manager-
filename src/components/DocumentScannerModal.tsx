@@ -228,6 +228,24 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
     };
   }, [mode, startCamera, stopCamera]);
 
+  // Consume device Back inside the scanner: exit crop editing first, then close scanner.
+  useEffect(() => {
+    const handleAndroidBack = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (cropEditing) {
+        setCropEditing(false);
+      } else if (mode === 'review' && reviewSubMode === 'crop') {
+        setReviewSubMode('preview');
+      } else {
+        stopCamera();
+        onClose();
+      }
+    };
+    window.addEventListener('androidback', handleAndroidBack, true);
+    return () => window.removeEventListener('androidback', handleAndroidBack, true);
+  }, [cropEditing, mode, reviewSubMode, stopCamera, onClose]);
+
   const toggleTorch = async () => {
     const track = streamRef.current?.getVideoTracks()[0];
     if (!track || !torchSupported) return;
