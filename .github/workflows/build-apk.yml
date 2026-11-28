@@ -66,6 +66,7 @@ jobs:
           PROJECT_DIR="$(dirname "$SETTINGS")"
           # Keep the repository's editable React source as the single source of truth.
           cp -R "$GITHUB_WORKSPACE/src/." "$PROJECT_DIR/web-source/src/"
+          cp "$GITHUB_WORKSPACE/tsconfig.json" "$PROJECT_DIR/web-source/tsconfig.json"
           cd "$PROJECT_DIR/web-source"
           npm install --no-audit --no-fund
           npm run build
