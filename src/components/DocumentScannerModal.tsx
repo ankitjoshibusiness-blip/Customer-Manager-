@@ -110,7 +110,6 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
-  const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
   const pagesRef = useRef<ScannedPage[]>([]);
   const cameraReqIdRef = useRef<number>(0);
   const warpedCacheRef = useRef<{ key: string; canvas: HTMLCanvasElement } | null>(null);
@@ -1253,15 +1252,6 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
                 >
                   <ImagePlus className="w-5 h-5" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => nativeCameraInputRef.current?.click()}
-                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors"
-                  aria-label="Use device camera"
-                  title="Use phone camera app"
-                >
-                  <Camera className="w-4 h-4 text-white/85" />
-                </button>
               </div>
 
               {/* Center: Google Drive Shutter Button with Live Auto-Capture Progress Arc */}
@@ -1369,14 +1359,6 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
         type="file"
         multiple
         accept="image/*"
-        onChange={handleImportPhotos}
-        className="hidden"
-      />
-      <input
-        ref={nativeCameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
         onChange={handleImportPhotos}
         className="hidden"
       />
