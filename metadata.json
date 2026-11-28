@@ -1,0 +1,9 @@
+{
+  "name": "Customer Manager",
+  "description": "Loan customer workspace with applicant profiles, document checklists, GPS camera capture, EMI calculator, and encrypted backups.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
