@@ -1,0 +1,41 @@
+name: Extract Customer Manager ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'CustomerManager_AndroidStudio.zip'
+      - '.github/workflows/extract-zip.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify ZIP archive
+        run: |
+          test -f CustomerManager_AndroidStudio.zip
+          unzip -t CustomerManager_AndroidStudio.zip
+
+      - name: Extract ZIP
+        run: |
+          mkdir extracted
+          unzip -q CustomerManager_AndroidStudio.zip -d extracted
+          echo "Extracted file count:"
+          find extracted -type f | wc -l
+          echo "Extracted folder structure:"
+          find extracted -mindepth 1 -maxdepth 2 -print | head -200
+
+      - name: Upload extracted project
+        uses: actions/upload-artifact@v4
+        with:
+          name: CustomerManager-Extracted-Source
+          path: extracted/
+          if-no-files-found: error
+          retention-days: 7
