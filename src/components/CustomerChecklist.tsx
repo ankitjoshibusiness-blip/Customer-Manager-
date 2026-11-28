@@ -264,7 +264,7 @@ export const CustomerChecklist: React.FC<CustomerChecklistProps> = ({
           [activeDocKey]: true,
           [`files_${activeDocKey}`]: [
             ...existing,
-            { uri, name: pdfName, source: 'Scanner' },
+            { uri, name: pdfName, source: 'Google Scanner' },
           ],
         };
       });
@@ -611,8 +611,8 @@ export const CustomerChecklist: React.FC<CustomerChecklistProps> = ({
                   className="p-4 rounded-2xl bg-[#F3ECFC] border border-[#E7E0F1] hover:border-[#7042C1] flex flex-col items-center gap-2 text-center transition-colors disabled:opacity-50"
                 >
                   <Camera className="w-7 h-7 text-[#7042C1]" />
-                  <span className="font-bold text-sm text-[#211936]">Scanner</span>
-                  <span className="text-[11px] text-[#77718A]">Scan pages into PDF</span>
+                  <span className="font-bold text-sm text-[#211936]">Google Scanner</span>
+                  <span className="text-[11px] text-[#77718A]">Auto detect and save as PDF</span>
                 </button>
               </div>
             )}
