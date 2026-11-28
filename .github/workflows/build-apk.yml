@@ -286,7 +286,7 @@ jobs:
           '''
           if "override fun onGeolocationPermissionsShowPrompt" not in source:
               import re
-              chrome = re.search(r'((?:webView\.)?webChromeClient\s*=\s*object\s*:\s*WebChromeClient\\(\\)\s*\\{)', source)
+              chrome = re.search(r'((?:webView\.)?webChromeClient\s*=\s*object\s*:\s*WebChromeClient[(][)]\s*[{])', source)
               if chrome:
                   source = source[:chrome.end()] + "\n" + geo_override + source[chrome.end():]
               else:
