@@ -608,6 +608,27 @@ export const SecuritySettingsScreen: React.FC<SecuritySettingsScreenProps> = ({ 
   const [patternConfirm, setPatternConfirm] = useState('');
   const [patternStep, setPatternStep] = useState(0);
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
+  useEffect(() => {
+    const handleAndroidBack = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (showChange) {
+        setShowChange(false);
+        setError('');
+      } else if (verified) {
+        setVerified(false);
+        setCurrent('');
+        setCurrentPattern('');
+        setError('');
+      } else {
+        onBack();
+      }
+    };
+    window.addEventListener('androidback', handleAndroidBack, true);
+    return () => window.removeEventListener('androidback', handleAndroidBack, true);
+  }, [showChange, verified, onBack]);
+
+
 
   const verifyCurrent = async (e: React.FormEvent) => {
     e.preventDefault();
