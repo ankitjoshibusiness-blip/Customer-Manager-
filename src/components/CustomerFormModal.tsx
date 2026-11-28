@@ -554,7 +554,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
   const loanOptions = loanType && !LOAN_TYPES.includes(loanType) ? [loanType, ...LOAN_TYPES] : LOAN_TYPES;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4">
+    <div data-customer-form-modal="true" className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4">
       <div className="bg-[#FDFDFF] rounded-[28px] border border-[#E3D9F4] w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-lg">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-[#E3D9F4] flex items-start justify-between gap-4 bg-white">
