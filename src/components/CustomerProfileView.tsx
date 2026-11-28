@@ -135,11 +135,17 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
       else if (showNavSettings) setShowNavSettings(false);
       else if (showDeleteMediaConfirm) setShowDeleteMediaConfirm(false);
       else if (showDeleteCustomerConfirm) setShowDeleteCustomerConfirm(false);
+      else if (selectionMode) {
+        setSelectionMode(false);
+        setSelectedPhotos([]);
+        setSelectedVideos([]);
+      } else if (selectedPersonIdx > 0) setSelectedPersonIdx(0);
+      else if (profileTab !== 0) setProfileTab(0);
       else onBack();
     };
     window.addEventListener('androidback', handleAndroidBack, true);
     return () => window.removeEventListener('androidback', handleAndroidBack, true);
-  }, [docViewerState, videoViewerUrl, photoViewerState, showGpsCamera, showPhotoCrop, showNavSettings, showDeleteMediaConfirm, showDeleteCustomerConfirm, onBack]);
+  }, [docViewerState, videoViewerUrl, photoViewerState, showGpsCamera, showPhotoCrop, showNavSettings, showDeleteMediaConfirm, showDeleteCustomerConfirm, selectionMode, selectedPersonIdx, profileTab, onBack]);
 
   useEffect(() => {
     setNoteDraft(customer.notes);
