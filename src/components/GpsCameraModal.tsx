@@ -321,11 +321,13 @@ export const GpsCameraModal: React.FC<GpsCameraModalProps> = ({
     const canvasStream = canvas.captureStream(30);
     stream.getAudioTracks().forEach((t) => canvasStream.addTrack(t));
 
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
-      ? 'video/webm;codecs=vp8'
-      : 'video/webm';
+    const mimeType = [
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=vp8',
+      'video/webm',
+    ].find((candidate) => MediaRecorder.isTypeSupported(candidate)) || '';
     const chunks: BlobPart[] = [];
-    const recorder = new MediaRecorder(canvasStream, { mimeType });
+    const recorder = new MediaRecorder(canvasStream, mimeType ? { mimeType } : undefined);
     recorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => {
