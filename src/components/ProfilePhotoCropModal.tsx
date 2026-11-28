@@ -19,13 +19,80 @@ export const ProfilePhotoCropModal: React.FC<ProfilePhotoCropModalProps> = ({
   const dragStartRef = useRef({ x: 0, y: 0, ox: 0, oy: 0 });
   const imgRef = useRef<HTMLImageElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
-  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState('');
 
   useEffect(() => {
     return () => {
       if (imageSrc) URL.revokeObjectURL(imageSrc);
     };
   }, [imageSrc]);
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraOpen(false);
+  };
+
+  const openCamera = async () => {
+    setCameraError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Camera is not available on this device. Check camera permission.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'user' }, width: { ideal: 1280 }, height: { ideal: 1280 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setCameraOpen(true);
+    } catch (error) {
+      setCameraError(error instanceof Error ? error.message : 'Camera permission denied.');
+    }
+  };
+
+  useEffect(() => {
+    if (!cameraOpen || !videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = streamRef.current;
+    void videoRef.current.play().catch(() => undefined);
+  }, [cameraOpen]);
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  const captureCameraPhoto = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      if (imageSrc) URL.revokeObjectURL(imageSrc);
+      setImageSrc(URL.createObjectURL(blob));
+      setZoom(1);
+      setOffset({ x: 0, y: 0 });
+      stopCamera();
+    }, 'image/jpeg', 0.94);
+  };
+
+  useEffect(() => {
+    if (!cameraOpen) return;
+    const handleAndroidBack = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      stopCamera();
+    };
+    window.addEventListener('androidback', handleAndroidBack, true);
+    return () => window.removeEventListener('androidback', handleAndroidBack, true);
+  }, [cameraOpen]);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,7 +173,7 @@ export const ProfilePhotoCropModal: React.FC<ProfilePhotoCropModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => cameraInputRef.current?.click()}
+            onClick={openCamera}
             className="py-2.5 px-3 rounded-xl bg-[#F3ECFC] border border-[#E3D9F4] text-[#7042C1] text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#EAE0FA]"
           >
             <Camera className="w-4 h-4" />
@@ -121,14 +188,18 @@ export const ProfilePhotoCropModal: React.FC<ProfilePhotoCropModalProps> = ({
           onChange={handleFile}
           className="hidden"
         />
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="user"
-          onChange={handleFile}
-          className="hidden"
-        />
+
+        {cameraError && <p className="text-xs text-red-600">{cameraError}</p>}
+
+        {cameraOpen && (
+          <div className="space-y-3">
+            <video ref={videoRef} autoPlay playsInline muted className="w-full max-h-[48vh] rounded-2xl bg-black object-cover" />
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={stopCamera} className="py-2.5 rounded-xl border border-[#D4D8E1] text-sm font-semibold text-[#625A78]">Cancel</button>
+              <button type="button" onClick={captureCameraPhoto} className="py-2.5 rounded-xl bg-[#7042C1] text-white text-sm font-bold flex items-center justify-center gap-2"><Camera className="w-4 h-4" /> Capture Photo</button>
+            </div>
+          </div>
+        )}
 
         {imageSrc && (
           <div className="space-y-3 flex flex-col items-center">
