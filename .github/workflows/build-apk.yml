@@ -389,13 +389,13 @@ jobs:
                   raise SystemExit("Could not find safe MainActivity helper insertion point")
               source = source.replace(helper_marker, helpers + helper_marker, 1)
 
-          on_create = re.search(r"(override\\s+fun\\s+onCreate\\s*\\(\\s*savedInstanceState\\s*:\\s*Bundle\\?\\s*\\)\\s*\\{)", source)
+          on_create = re.search(r"(override\s+fun\s+onCreate\s*\(\s*savedInstanceState\s*:\s*Bundle\?\s*\)\s*\\{)", source)
           if not on_create:
               raise SystemExit("Could not locate MainActivity.onCreate(Bundle?)")
           if "installStartupCrashDiagnostics()" not in source[on_create.end():on_create.end()+500]:
               source = source[:on_create.end()] + "\n        installStartupCrashDiagnostics()" + source[on_create.end():]
 
-          super_call = re.search(r"super\\.onCreate\\(savedInstanceState\\)", source[on_create.end():])
+          super_call = re.search(r"super\.onCreate\(savedInstanceState\)", source[on_create.end():])
           if not super_call:
               raise SystemExit("Could not locate super.onCreate(savedInstanceState)")
           insert_at = on_create.end() + super_call.end()
