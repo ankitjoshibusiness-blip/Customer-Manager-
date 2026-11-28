@@ -24,11 +24,17 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Gradle 8.9 (wrapper is absent in source ZIP)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses || true
 
       - name: Verify and extract source ZIP
         run: |
+          set -e
           test -f CustomerManager_AndroidStudio.zip
           unzip -t CustomerManager_AndroidStudio.zip
           mkdir source
@@ -37,17 +43,17 @@ jobs:
       - name: Locate Gradle project and build APK
         run: |
           set -e
-          WRAPPER="$(find "$GITHUB_WORKSPACE/source" -type f -name gradlew -print -quit)"
-          if [ -z "$WRAPPER" ]; then
-            echo "::error::Gradle wrapper (gradlew) was not found in the uploaded ZIP."
-            echo "Top-level extracted files:"
-            find "$GITHUB_WORKSPACE/source" -maxdepth 4 -type f | head -200
+          SETTINGS="$(find "$GITHUB_WORKSPACE/source" -type f -name settings.gradle.kts -print -quit)"
+          if [ -z "$SETTINGS" ]; then
+            echo "::error::settings.gradle.kts was not found in the extracted ZIP."
+            find "$GITHUB_WORKSPACE/source" -maxdepth 5 -type f | head -200
             exit 1
           fi
-          PROJECT_DIR="$(dirname "$WRAPPER")"
+          PROJECT_DIR="$(dirname "$SETTINGS")"
           cd "$PROJECT_DIR"
-          chmod +x ./gradlew
-          ./gradlew --no-daemon assembleDebug
+          echo "Gradle project: $PROJECT_DIR"
+          gradle --version
+          gradle --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
