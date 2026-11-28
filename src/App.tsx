@@ -41,6 +41,23 @@ export function App() {
 
   const lastActivityRef = useRef<number>(Date.now());
 
+  // Route the physical Android Back button through the app's screen stack.
+  useEffect(() => {
+    const handleAndroidBack = (event: Event) => {
+      if (selectedId !== null) return; // The customer profile handles its own overlays.
+      if (showForm) {
+        event.preventDefault();
+        setShowForm(false);
+        setEditingCustomer(null);
+      } else if (activeView !== 'dashboard') {
+        event.preventDefault();
+        setActiveView('dashboard');
+      }
+    };
+    window.addEventListener('androidback', handleAndroidBack);
+    return () => window.removeEventListener('androidback', handleAndroidBack);
+  }, [activeView, selectedId, showForm]);
+
   const loadCustomers = useCallback(async () => {
     await seedDemoCustomerIfNeeded();
     const list = await getAllCustomers();
