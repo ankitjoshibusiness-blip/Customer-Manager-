@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Download, ExternalLink, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, RotateCw, X, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface PhotoViewerModalProps {
   urls: string[];
