@@ -68,6 +68,7 @@ jobs:
           import sys
           p = Path(sys.argv[1])
           source = p.read_text()
+          source = source.replace("val granted = results.values.any { it }", "val granted = results.isNotEmpty() && results.values.all { it }", 1)
           start = source.index("        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {")
           end = source.index("\n\n        // Loads local bundled assets", start)
           new = '''        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -83,7 +84,6 @@ jobs:
                   }
               }
           })'''
-          source = source.replace("val granted = results.values.any { it }", "val granted = results.isNotEmpty() && results.values.all { it }", 1)
           source = source[:start] + new + source[end:]
           p.write_text(source.replace(old, new, 1))
           PY
