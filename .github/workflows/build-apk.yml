@@ -314,6 +314,98 @@ jobs:
           main.write_text(source)
           PY
 
+      - name: Add startup crash diagnostics
+        run: |
+          set -e
+          SETTINGS="$(find "$GITHUB_WORKSPACE/source" -type f -name settings.gradle.kts -print -quit)"
+          PROJECT_DIR="$(dirname "$SETTINGS")"
+          MAIN="$PROJECT_DIR/app/src/main/java/com/customermanager/app/MainActivity.kt"
+          python3 - "$MAIN" <<'PY'
+          from pathlib import Path
+          import re, sys
+
+          p = Path(sys.argv[1])
+          source = p.read_text()
+
+          imports = [
+              "import android.app.AlertDialog",
+              "import android.content.Intent",
+              "import java.io.PrintWriter",
+              "import java.io.StringWriter",
+              "import java.text.SimpleDateFormat",
+              "import java.util.Date",
+              "import java.util.Locale",
+          ]
+          package_line = re.search(r"^package .*?$", source, re.M)
+          if not package_line:
+              raise SystemExit("Could not find Kotlin package declaration")
+          for item in imports:
+              if item not in source:
+                  source = source[:package_line.end()] + "\n" + item + source[package_line.end():]
+                  package_line = re.search(r"^package .*?$", source, re.M)
+
+          helper_marker = '    @SuppressLint("SetJavaScriptEnabled")'
+          helpers = '''
+              private fun installStartupCrashDiagnostics() {
+                  val previous = Thread.getDefaultUncaughtExceptionHandler()
+                  Thread.setDefaultUncaughtExceptionHandler { thread, error ->
+                      try {
+                          val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }.toString()
+                          val report = "Customer Manager crash report\\nTime: " +
+                              SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date()) +
+                              "\\nThread: " + thread.name + "\\n\\n" + trace
+                          filesDir.resolve("last-crash.txt").writeText(report)
+                          getExternalFilesDir(null)?.resolve("CustomerManager-crash-report.txt")?.writeText(report)
+                      } catch (_: Throwable) { }
+                      previous?.uncaughtException(thread, error)
+                  }
+              }
+
+              private fun showPreviousStartupCrash() {
+                  val reportFile = getExternalFilesDir(null)?.resolve("CustomerManager-crash-report.txt")
+                      ?.takeIf { it.isFile }
+                      ?: filesDir.resolve("last-crash.txt").takeIf { it.isFile }
+                      ?: return
+                  val report = try { reportFile.readText() } catch (_: Exception) { return }
+                  if (report.isBlank()) return
+                  AlertDialog.Builder(this)
+                      .setTitle("Previous crash report found")
+                      .setMessage(report.take(6000))
+                      .setPositiveButton("Share report") { _, _ ->
+                          val share = Intent(Intent.ACTION_SEND).apply {
+                              type = "text/plain"
+                              putExtra(Intent.EXTRA_SUBJECT, "Customer Manager crash report")
+                              putExtra(Intent.EXTRA_TEXT, report)
+                          }
+                          startActivity(Intent.createChooser(share, "Send crash report"))
+                      }
+                      .setNegativeButton("Close", null)
+                      .show()
+              }
+
+          '''
+          if "private fun installStartupCrashDiagnostics()" not in source:
+              if helper_marker not in source:
+                  raise SystemExit("Could not find safe MainActivity helper insertion point")
+              source = source.replace(helper_marker, helpers + helper_marker, 1)
+
+          on_create = re.search(r"(override\\s+fun\\s+onCreate\\s*\\(\\s*savedInstanceState\\s*:\\s*Bundle\\?\\s*\\)\\s*\\{)", source)
+          if not on_create:
+              raise SystemExit("Could not locate MainActivity.onCreate(Bundle?)")
+          if "installStartupCrashDiagnostics()" not in source[on_create.end():on_create.end()+500]:
+              source = source[:on_create.end()] + "\n        installStartupCrashDiagnostics()" + source[on_create.end():]
+
+          super_call = re.search(r"super\\.onCreate\\(savedInstanceState\\)", source[on_create.end():])
+          if not super_call:
+              raise SystemExit("Could not locate super.onCreate(savedInstanceState)")
+          insert_at = on_create.end() + super_call.end()
+          if "showPreviousStartupCrash()" not in source[insert_at:insert_at+500]:
+              source = source[:insert_at] + "\n        showPreviousStartupCrash()" + source[insert_at:]
+
+          p.write_text(source)
+          print("Installed native uncaught-exception report capture and next-launch share dialog.")
+          PY
+
       - name: Locate Gradle project and build APK
         run: |
           set -e
