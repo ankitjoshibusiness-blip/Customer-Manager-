@@ -45,7 +45,10 @@ export function App() {
   // Route the physical Android Back button through the app's screen stack.
   useEffect(() => {
     const handleAndroidBack = (event: Event) => {
-      if (showForm) {
+      if (showExitConfirm) {
+        event.preventDefault();
+        setShowExitConfirm(false);
+      } else if (showForm) {
         event.preventDefault();
         setShowForm(false);
         setEditingCustomer(null);
@@ -65,7 +68,7 @@ export function App() {
     };
     window.addEventListener('androidback', handleAndroidBack);
     return () => window.removeEventListener('androidback', handleAndroidBack);
-  }, [activeView, selectedId, showForm]);
+  }, [activeView, selectedId, showForm, showExitConfirm]);
 
   const loadCustomers = useCallback(async () => {
     await seedDemoCustomerIfNeeded();
