@@ -95,7 +95,7 @@ jobs:
               }
           })'''
           source = source[:start] + new + source[end:]
-          p.write_text(source.replace(old, new, 1))
+          p.write_text(source)
           PY
 
       - name: Locate Gradle project and build APK
