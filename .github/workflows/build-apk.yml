@@ -99,6 +99,126 @@ jobs:
           p.write_text(source)
           PY
 
+      - name: Integrate Google ML Kit Document Scanner
+        run: |
+          set -e
+          SETTINGS="$(find "$GITHUB_WORKSPACE/source" -type f -name settings.gradle.kts -print -quit)"
+          PROJECT_DIR="$(dirname "$SETTINGS")"
+          APP_DIR="$PROJECT_DIR/app"
+          python3 - "$APP_DIR" <<'PY'
+          from pathlib import Path
+          import sys
+
+          app = Path(sys.argv[1])
+          gradle = app / "build.gradle.kts"
+          text = gradle.read_text()
+          dependency = '    implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")'
+          if "play-services-mlkit-document-scanner" not in text:
+              if "dependencies {" not in text:
+                  raise SystemExit("Could not find app dependencies block")
+              text = text.replace("dependencies {", "dependencies {\n" + dependency, 1)
+              gradle.write_text(text)
+
+          main = app / "src/main/java/com/customermanager/app/MainActivity.kt"
+          source = main.read_text()
+          imports = [
+              "import androidx.activity.result.IntentSenderRequest",
+              "import com.google.mlkit.vision.documentscanner.GmsDocumentScanning",
+              "import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions",
+              "import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult",
+              "import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_PDF",
+              "import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL",
+              "import org.json.JSONObject",
+          ]
+          marker = "import androidx.activity.result.contract.ActivityResultContracts\n"
+          if marker not in source:
+              raise SystemExit("Could not find ActivityResultContracts import")
+          for item in imports:
+              if item not in source:
+                  source = source.replace(marker, marker + item + "\n", 1)
+
+          launcher_marker = "    @SuppressLint(\"SetJavaScriptEnabled\")"
+          launcher = '''
+              private val documentScannerLauncher =
+                  registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+                      if (result.resultCode == RESULT_OK) {
+                          try {
+                              val scan = result.data?.let { GmsDocumentScanningResult.fromActivityResultIntent(it) }
+                                  ?: throw IllegalStateException("Google Scanner returned no result")
+                              val pdf = scan.pdf ?: throw IllegalStateException("No PDF was returned by Google Scanner")
+                              val bytes = contentResolver.openInputStream(pdf.uri)?.use { it.readBytes() }
+                                  ?: throw IllegalStateException("Could not read scanned PDF")
+                              val detail = JSONObject()
+                                  .put("pdfBase64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+                                  .put("pageCount", pdf.pageCount)
+                                  .put("fileName", "Scanned_Document_${System.currentTimeMillis()}.pdf")
+                              dispatchDocumentScannerEvent("nativeDocumentScanResult", detail)
+                          } catch (error: Exception) {
+                              dispatchDocumentScannerError(error.message ?: "Could not read scanned document")
+                          }
+                      } else {
+                          dispatchDocumentScannerEvent("nativeDocumentScanCancelled")
+                      }
+                  }
+
+              private fun launchDocumentScanner() {
+                  val options = GmsDocumentScannerOptions.Builder()
+                      .setGalleryImportAllowed(true)
+                      .setPageLimit(50)
+                      .setResultFormats(RESULT_FORMAT_PDF)
+                      .setScannerMode(SCANNER_MODE_FULL)
+                      .build()
+                  GmsDocumentScanning.getClient(options)
+                      .getStartScanIntent(this)
+                      .addOnSuccessListener { intentSender ->
+                          documentScannerLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
+                      }
+                      .addOnFailureListener { error ->
+                          dispatchDocumentScannerError(error.message ?: "Google Document Scanner could not start")
+                      }
+              }
+
+              private fun dispatchDocumentScannerEvent(name: String, detail: JSONObject? = null) {
+                  val script = if (detail == null) {
+                      "window.dispatchEvent(new Event('$name'))"
+                  } else {
+                      "window.dispatchEvent(new CustomEvent('$name',{detail:$detail}))"
+                  }
+                  runOnUiThread {
+                      if (::webView.isInitialized) webView.evaluateJavascript(script, null)
+                  }
+              }
+
+              private fun dispatchDocumentScannerError(message: String) {
+                  dispatchDocumentScannerEvent(
+                      "nativeDocumentScanResult",
+                      JSONObject().put("error", message)
+                  )
+              }
+
+              inner class AndroidDocumentScanner {
+                  @JavascriptInterface
+                  fun startDocumentScan() {
+                      runOnUiThread { launchDocumentScanner() }
+                  }
+              }
+
+          '''
+          if "private val documentScannerLauncher" not in source:
+              if launcher_marker not in source:
+                  raise SystemExit("Could not find MainActivity insertion point for scanner launcher")
+              source = source.replace(launcher_marker, launcher + launcher_marker, 1)
+
+          bridge_marker = '            addJavascriptInterface(AndroidDownloader(), "AndroidDownloader")'
+          bridge = bridge_marker + '\n            addJavascriptInterface(AndroidDocumentScanner(), "AndroidDocumentScanner")'
+          if 'addJavascriptInterface(AndroidDocumentScanner(), "AndroidDocumentScanner")' not in source:
+              if bridge_marker not in source:
+                  raise SystemExit("Could not find WebView JavaScript bridge insertion point")
+              source = source.replace(bridge_marker, bridge, 1)
+
+          main.write_text(source)
+          PY
+
       - name: Locate Gradle project and build APK
         run: |
           set -e
