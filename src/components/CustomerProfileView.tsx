@@ -125,6 +125,28 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   const [resolvedUrls, setResolvedUrls] = useState<Record<string, { url: string; name: string }>>({});
   const attachInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Close the top-most profile dialog before navigating back to the customer list.
+  useEffect(() => {
+    const handleAndroidBack = (event: Event) => {
+      if (docViewerState) setDocViewerState(null);
+      else if (videoViewerUrl) setVideoViewerUrl(null);
+      else if (photoViewerState) setPhotoViewerState(null);
+      else if (showGpsCamera) setShowGpsCamera(false);
+      else if (showPhotoCrop) setShowPhotoCrop(false);
+      else if (showNavSettings) setShowNavSettings(false);
+      else if (showDeleteMediaConfirm) setShowDeleteMediaConfirm(false);
+      else if (showDeleteCustomerConfirm) setShowDeleteCustomerConfirm(false);
+      else {
+        event.preventDefault();
+        onBack();
+        return;
+      }
+      event.preventDefault();
+    };
+    window.addEventListener('androidback', handleAndroidBack);
+    return () => window.removeEventListener('androidback', handleAndroidBack);
+  }, [docViewerState, videoViewerUrl, photoViewerState, showGpsCamera, showPhotoCrop, showNavSettings, showDeleteMediaConfirm, showDeleteCustomerConfirm, onBack]);
+
   useEffect(() => {
     setNoteDraft(customer.notes);
     setSelectedPersonIdx(0);
