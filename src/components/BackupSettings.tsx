@@ -31,6 +31,17 @@ export const BackupSettings: React.FC<BackupSettingsProps> = ({ onBack, onRestor
     getLatestBackup().then(setLatestBackup).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const handleAndroidBack = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (showRestoreConfirm) setShowRestoreConfirm(false);
+      else onBack();
+    };
+    window.addEventListener('androidback', handleAndroidBack, true);
+    return () => window.removeEventListener('androidback', handleAndroidBack, true);
+  }, [showRestoreConfirm, onBack]);
+
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
