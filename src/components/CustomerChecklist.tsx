@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BadgeCheck,
@@ -97,6 +97,27 @@ export const CustomerChecklist: React.FC<CustomerChecklistProps> = ({
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Document scanner/dialog is a nested layer and must consume Back first.
+  useEffect(() => {
+    const handleAndroidBack = (event: Event) => {
+      if (scannerOpen) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setScannerOpen(false);
+      } else if (actionOpen) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setActionOpen(false);
+      } else if (showAddDialog) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setShowAddDialog(false);
+      }
+    };
+    window.addEventListener('androidback', handleAndroidBack, true);
+    return () => window.removeEventListener('androidback', handleAndroidBack, true);
+  }, [scannerOpen, actionOpen, showAddDialog]);
 
   const personCategories = useMemo(
     () => [
