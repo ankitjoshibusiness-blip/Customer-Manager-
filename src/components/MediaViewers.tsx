@@ -1,5 +1,8 @@
-import React, { useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Download, RotateCw, X, ZoomIn, ZoomOut } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ChevronLeft, ChevronRight, Download, RotateCw, X, ZoomIn, ZoomOut,
+  Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipBack, SkipForward,
+} from 'lucide-react';
 
 interface PhotoViewerModalProps {
   urls: string[];
@@ -9,76 +12,86 @@ interface PhotoViewerModalProps {
 }
 
 export const PhotoViewerModal: React.FC<PhotoViewerModalProps> = ({
-  urls,
-  currentIndex,
-  onChangeIndex,
-  onClose,
+  urls, currentIndex, onChangeIndex, onClose,
 }) => {
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [showControls, setShowControls] = useState(true);
+  const touchStart = useRef<{x:number;y:number}|null>(null);
+  const currentUrl = urls[currentIndex];
+
+  useEffect(() => {
+    setZoom(1);
+    setRotation(0);
+  }, [currentIndex, currentUrl]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowLeft' && currentIndex > 0) onChangeIndex(currentIndex - 1);
       if (e.key === 'ArrowRight' && currentIndex < urls.length - 1) onChangeIndex(currentIndex + 1);
+      if (e.key === '+' || e.key === '=') setZoom((z) => Math.min(5, z + 0.25));
+      if (e.key === '-') setZoom((z) => Math.max(0.5, z - 0.25));
+      if (e.key.toLowerCase() === 'r') setRotation((r) => (r + 90) % 360);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [currentIndex, urls.length, onChangeIndex, onClose]);
 
-  const currentUrl = urls[currentIndex];
   if (!currentUrl) return null;
+  const downloadPhoto = () => {
+    const a = document.createElement('a');
+    a.href = currentUrl;
+    a.download = `Photo-${currentIndex + 1}.jpg`;
+    a.rel = 'noopener';
+    a.click();
+  };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-      <div className="bg-[#F7F8FB] rounded-[24px] w-full max-w-4xl h-[86vh] flex flex-col overflow-hidden">
-        <div className="px-5 py-3 bg-white border-b border-[#E3D9F4] flex items-center justify-between">
-          <p className="font-bold text-sm text-[#211936]">
-            Photo Viewer{' '}
-            {urls.length > 1 && (
-              <span className="text-xs font-mono-nums text-[#77718A] ml-2">
-                {currentIndex + 1} / {urls.length}
-              </span>
-            )}
-          </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-[#211936] hover:bg-[#F0EAFB]"
-          >
-            <X className="w-5 h-5" />
-          </button>
+    <div className="fixed inset-0 z-50 bg-[#09090B] text-white flex flex-col" onMouseMove={() => setShowControls(true)}>
+      <header className={`shrink-0 flex items-center gap-3 px-4 py-3 bg-gradient-to-b from-black/80 to-transparent transition-opacity ${showControls ? 'opacity-100' : 'opacity-60'}`}>
+        <button type="button" onClick={onClose} aria-label="Close photo viewer" className="p-2 rounded-full hover:bg-white/10"><X className="w-5 h-5" /></button>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">Photos</p>
+          <p className="text-[11px] text-white/60">{currentIndex + 1} of {urls.length}</p>
         </div>
+        <button type="button" onClick={() => setRotation((r) => (r + 90) % 360)} title="Rotate" className="p-2 rounded-full hover:bg-white/10"><RotateCw className="w-5 h-5" /></button>
+        <button type="button" onClick={downloadPhoto} title="Download photo" className="p-2 rounded-full hover:bg-white/10"><Download className="w-5 h-5" /></button>
+      </header>
 
-        <div className="relative flex-1 flex items-center justify-center p-4 overflow-hidden">
-          <img
-            src={currentUrl}
-            alt="Customer photo"
-            className="max-w-full max-h-full object-contain rounded-xl"
-          />
+      <main
+        className="relative flex-1 min-h-0 flex items-center justify-center overflow-hidden px-3"
+        onDoubleClick={() => setZoom((z) => z > 1 ? 1 : 2)}
+        onWheel={(e) => setZoom((z) => Math.max(0.5, Math.min(5, z + (e.deltaY < 0 ? 0.15 : -0.15))))}
+        onTouchStart={(e) => { const t=e.touches[0]; touchStart.current={x:t.clientX,y:t.clientY}; }}
+        onTouchEnd={(e) => {
+          if (!touchStart.current || zoom > 1) return;
+          const dx=e.changedTouches[0].clientX-touchStart.current.x;
+          const dy=e.changedTouches[0].clientY-touchStart.current.y;
+          if (Math.abs(dx)>65 && Math.abs(dx)>Math.abs(dy)) {
+            if (dx<0 && currentIndex<urls.length-1) onChangeIndex(currentIndex+1);
+            if (dx>0 && currentIndex>0) onChangeIndex(currentIndex-1);
+          }
+          touchStart.current=null;
+        }}
+      >
+        {urls.length > 1 && <button type="button" disabled={currentIndex===0} onClick={() => onChangeIndex(currentIndex-1)} aria-label="Previous photo" className="absolute left-3 z-10 p-3 rounded-full bg-black/45 hover:bg-black/70 disabled:opacity-20"><ChevronLeft className="w-6 h-6" /></button>}
+        <img
+          src={currentUrl}
+          alt="Customer photo"
+          draggable={false}
+          className="max-w-full max-h-full object-contain select-none transition-transform duration-200"
+          style={{ transform: `scale(${zoom}) rotate(${rotation}deg)` }}
+        />
+        {urls.length > 1 && <button type="button" disabled={currentIndex===urls.length-1} onClick={() => onChangeIndex(currentIndex+1)} aria-label="Next photo" className="absolute right-3 z-10 p-3 rounded-full bg-black/45 hover:bg-black/70 disabled:opacity-20"><ChevronRight className="w-6 h-6" /></button>}
+      </main>
 
-          {urls.length > 1 && (
-            <>
-              <button
-                type="button"
-                disabled={currentIndex === 0}
-                onClick={() => onChangeIndex(currentIndex - 1)}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/45 text-white flex items-center justify-center disabled:opacity-25 hover:bg-black/65"
-                aria-label="Previous photo"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                type="button"
-                disabled={currentIndex === urls.length - 1}
-                onClick={() => onChangeIndex(currentIndex + 1)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/45 text-white flex items-center justify-center disabled:opacity-25 hover:bg-black/65"
-                aria-label="Next photo"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      <footer className="shrink-0 flex items-center justify-center gap-3 px-4 py-4 bg-gradient-to-t from-black/80 to-transparent">
+        <button type="button" onClick={() => setZoom((z) => Math.max(0.5, z-0.25))} title="Zoom out" className="p-2.5 rounded-full bg-white/10 hover:bg-white/20"><ZoomOut className="w-5 h-5" /></button>
+        <span className="text-xs tabular-nums text-white/75 min-w-12 text-center">{Math.round(zoom*100)}%</span>
+        <button type="button" onClick={() => setZoom((z) => Math.min(5, z+0.25))} title="Zoom in" className="p-2.5 rounded-full bg-white/10 hover:bg-white/20"><ZoomIn className="w-5 h-5" /></button>
+        <button type="button" onClick={() => {setZoom(1);setRotation(0);}} title="Reset view" className="px-3 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-xs">Reset</button>
+      </footer>
     </div>
   );
 };
@@ -88,25 +101,66 @@ interface VideoViewerModalProps {
   onClose: () => void;
 }
 
-export const VideoViewerModal: React.FC<VideoViewerModalProps> = ({ url, onClose }) => (
-  <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
-    <div className="bg-[#111116] rounded-[24px] w-full max-w-4xl max-h-[88vh] flex flex-col overflow-hidden text-white">
-      <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-        <p className="font-bold text-sm">Video Player</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1.5 rounded-lg text-white hover:bg-white/10"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-      <div className="flex-1 flex items-center justify-center p-4 bg-black">
-        <video src={url} controls autoPlay className="max-w-full max-h-[72vh] rounded-xl" />
-      </div>
+export const VideoViewerModal: React.FC<VideoViewerModalProps> = ({ url, onClose }) => {
+  const videoRef = useRef<HTMLVideoElement|null>(null);
+  const [playing,setPlaying] = useState(false);
+  const [muted,setMuted] = useState(false);
+  const [speed,setSpeed] = useState(1);
+  const [isFullscreen,setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const video=videoRef.current;
+    const onKey=(e:KeyboardEvent) => {
+      if(e.key==='Escape') onClose();
+      if(!video) return;
+      if(e.key===' '){e.preventDefault(); if(video.paused) void video.play(); else video.pause();}
+      if(e.key==='ArrowRight') video.currentTime=Math.min(video.duration||0,video.currentTime+10);
+      if(e.key==='ArrowLeft') video.currentTime=Math.max(0,video.currentTime-10);
+    };
+    const onFullscreen=()=>setIsFullscreen(Boolean(document.fullscreenElement));
+    window.addEventListener('keydown',onKey);
+    document.addEventListener('fullscreenchange',onFullscreen);
+    return ()=>{window.removeEventListener('keydown',onKey);document.removeEventListener('fullscreenchange',onFullscreen);};
+  },[onClose]);
+
+  const togglePlay=()=>{const v=videoRef.current;if(!v)return;if(v.paused)void v.play();else v.pause();};
+  const toggleFullscreen=async()=>{const v=videoRef.current;if(!v)return;try{if(!document.fullscreenElement)await v.parentElement?.requestFullscreen();else await document.exitFullscreen();}catch{/* Fullscreen may be unavailable in some WebViews. */}};
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#09090B] text-white flex flex-col">
+      <header className="shrink-0 flex items-center gap-3 px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
+        <button type="button" onClick={onClose} aria-label="Close video player" className="p-2 rounded-full hover:bg-white/10"><X className="w-5 h-5" /></button>
+        <div className="flex-1 min-w-0"><p className="text-sm font-semibold">Videos</p><p className="text-[11px] text-white/60">Video player</p></div>
+        <select aria-label="Playback speed" value={speed} onChange={(e)=>{const n=Number(e.target.value);setSpeed(n);if(videoRef.current)videoRef.current.playbackRate=n;}} className="bg-white/10 border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white">
+          {[0.5,0.75,1,1.25,1.5,2].map((n)=><option key={n} value={n} className="bg-[#202124]">{n}x</option>)}
+        </select>
+      </header>
+      <main className="flex-1 min-h-0 flex items-center justify-center bg-black p-2">
+        <div className="relative w-full h-full flex items-center justify-center">
+          <video
+            ref={videoRef}
+            src={url}
+            controls
+            autoPlay
+            playsInline
+            onPlay={()=>setPlaying(true)}
+            onPause={()=>setPlaying(false)}
+            onVolumeChange={(e)=>setMuted(e.currentTarget.muted || e.currentTarget.volume===0)}
+            className="max-w-full max-h-full w-full h-full object-contain"
+          />
+          {!playing && <button type="button" onClick={togglePlay} aria-label="Play video" className="absolute p-4 rounded-full bg-black/55 hover:bg-black/75"><Play className="w-8 h-8 fill-current" /></button>}
+        </div>
+      </main>
+      <footer className="shrink-0 flex items-center justify-center gap-3 px-4 py-3 bg-gradient-to-t from-black/80 to-transparent">
+        <button type="button" onClick={()=>{const v=videoRef.current;if(v)v.currentTime=Math.max(0,v.currentTime-10);}} title="Back 10 seconds" className="p-2.5 rounded-full bg-white/10 hover:bg-white/20"><SkipBack className="w-5 h-5" /></button>
+        <button type="button" onClick={togglePlay} title={playing?'Pause':'Play'} className="p-3 rounded-full bg-white text-black hover:bg-white/85">{playing?<Pause className="w-5 h-5 fill-current"/>:<Play className="w-5 h-5 fill-current"/>}</button>
+        <button type="button" onClick={()=>{const v=videoRef.current;if(v)v.currentTime=Math.min(v.duration||0,v.currentTime+10);}} title="Forward 10 seconds" className="p-2.5 rounded-full bg-white/10 hover:bg-white/20"><SkipForward className="w-5 h-5" /></button>
+        <button type="button" onClick={()=>{const v=videoRef.current;if(v){v.muted=!v.muted;setMuted(v.muted);}}} title={muted?'Unmute':'Mute'} className="p-2.5 rounded-full bg-white/10 hover:bg-white/20">{muted?<VolumeX className="w-5 h-5"/>:<Volume2 className="w-5 h-5"/>}</button>
+        <button type="button" onClick={toggleFullscreen} title="Fullscreen" className="p-2.5 rounded-full bg-white/10 hover:bg-white/20">{isFullscreen?<Minimize className="w-5 h-5"/>:<Maximize className="w-5 h-5"/>}</button>
+      </footer>
     </div>
-  </div>
-);
+  );
+};
 
 interface DocumentViewerModalProps {
   url: string;
@@ -122,8 +176,8 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   onClose,
 }) => {
   const isImage =
-    mimeType.startsWith('image/') || /\\.(png|jpe?g|webp|gif)$/i.test(name);
-  const isPdf = mimeType.toLowerCase().includes('pdf') || /\\.pdf$/i.test(name);
+    mimeType.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(name);
+  const isPdf = mimeType.toLowerCase().includes('pdf') || /\.pdf$/i.test(name);
   const [pdfDocument, setPdfDocument] = React.useState<any>(null);
   const [pageNumber, setPageNumber] = React.useState(1);
   const [scale, setScale] = React.useState(1.15);
