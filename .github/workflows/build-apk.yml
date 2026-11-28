@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'CustomerManager_AndroidStudio.zip'
+      - 'src/**'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
@@ -24,13 +25,20 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Set up Gradle 8.9 (wrapper is absent in source ZIP)
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
+      - name: Install Android SDK packages and accept licenses
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - name: Verify and extract source ZIP
         run: |
@@ -39,6 +47,54 @@ jobs:
           unzip -t CustomerManager_AndroidStudio.zip
           mkdir source
           unzip -q CustomerManager_AndroidStudio.zip -d source
+
+      - name: Build updated web app and apply Android Back handling
+        run: |
+          set -e
+          SETTINGS="$(find "$GITHUB_WORKSPACE/source" -type f -name settings.gradle.kts -print -quit)"
+          test -n "$SETTINGS"
+          PROJECT_DIR="$(dirname "$SETTINGS")"
+          # Keep the repository's editable React source as the single source of truth.
+          cp -R "$GITHUB_WORKSPACE/src/." "$PROJECT_DIR/web-source/src/"
+          cd "$PROJECT_DIR/web-source"
+          npm install --no-audit --no-fund
+          npm run build
+          mkdir -p "$PROJECT_DIR/app/src/main/assets"
+          rm -rf "$PROJECT_DIR/app/src/main/assets/"*
+          cp -R dist/. "$PROJECT_DIR/app/src/main/assets/"
+          # WebView Back now first asks the React UI to close its active screen/dialog.
+          python3 - "$PROJECT_DIR/app/src/main/java/com/customermanager/app/MainActivity.kt" <<'PY'
+          from pathlib import Path
+          import sys
+          p = Path(sys.argv[1])
+          source = p.read_text()
+          old = '''        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                    override fun handleOnBackPressed() {
+                        if (webView.canGoBack()) {
+                            webView.goBack()
+                        } else {
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                        }
+                    }
+                })'''
+          new = '''        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                    override fun handleOnBackPressed() {
+                        webView.evaluateJavascript(
+                            "(function(){var e=new Event('androidback',{cancelable:true});window.dispatchEvent(e);return e.defaultPrevented;})()"
+                        ) { handled ->
+                            if (handled == "true") return@evaluateJavascript
+                            if (webView.canGoBack()) webView.goBack() else {
+                                isEnabled = false
+                                onBackPressedDispatcher.onBackPressed()
+                            }
+                        }
+                    }
+                })'''
+          if old not in source:
+              raise SystemExit("Expected Android Back callback was not found; refusing an unsafe patch")
+          p.write_text(source.replace(old, new, 1))
+          PY
 
       - name: Locate Gradle project and build APK
         run: |
