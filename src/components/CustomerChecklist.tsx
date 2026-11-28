@@ -102,9 +102,7 @@ export const CustomerChecklist: React.FC<CustomerChecklistProps> = ({
   useEffect(() => {
     const handleAndroidBack = (event: Event) => {
       if (scannerOpen) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        setScannerOpen(false);
+        return; // The scanner modal handles Back at the higher visual layer.
       } else if (actionOpen) {
         event.preventDefault();
         event.stopImmediatePropagation();
