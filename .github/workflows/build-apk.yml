@@ -69,7 +69,7 @@ jobs:
           p = Path(sys.argv[1])
           source = p.read_text()
           start = source.index("        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {")
-          end = source.index("\\n\\n        // Loads local bundled assets", start)
+          end = source.index("\n\n        // Loads local bundled assets", start)
           new = '''        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
               override fun handleOnBackPressed() {
                   webView.evaluateJavascript(
