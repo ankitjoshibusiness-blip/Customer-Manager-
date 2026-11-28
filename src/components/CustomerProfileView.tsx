@@ -14,7 +14,6 @@ import {
   Image as ImageIcon,
   List,
   Plus,
-  ScanLine,
   Share2,
   SlidersHorizontal,
   StickyNote,
@@ -37,7 +36,6 @@ import {
 import { exportCustomerProfilePdf } from '../services/pdfExport';
 import { triggerBlobDownload } from '../services/backup';
 import { CustomerChecklist } from './CustomerChecklist';
-import { DocumentScannerModal } from './DocumentScannerModal';
 import { GpsCameraModal } from './GpsCameraModal';
 import { ProfilePhotoCropModal } from './ProfilePhotoCropModal';
 import {
@@ -103,7 +101,6 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   const [showPhotoCrop, setShowPhotoCrop] = useState(false);
   const [showGpsCamera, setShowGpsCamera] = useState(false);
   const [gpsCameraVideoMode, setGpsCameraVideoMode] = useState(false);
-  const [showPhotoScanner, setShowPhotoScanner] = useState(false);
 
   // Viewers
   const [photoViewerState, setPhotoViewerState] = useState<{
@@ -125,9 +122,11 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   const [resolvedUrls, setResolvedUrls] = useState<Record<string, { url: string; name: string }>>({});
   const attachInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Close the top-most profile dialog before navigating back to the customer list.
+  // Capture the device Back event before the app-level fallback handler.
   useEffect(() => {
     const handleAndroidBack = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
       if (docViewerState) setDocViewerState(null);
       else if (videoViewerUrl) setVideoViewerUrl(null);
       else if (photoViewerState) setPhotoViewerState(null);
@@ -136,15 +135,10 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
       else if (showNavSettings) setShowNavSettings(false);
       else if (showDeleteMediaConfirm) setShowDeleteMediaConfirm(false);
       else if (showDeleteCustomerConfirm) setShowDeleteCustomerConfirm(false);
-      else {
-        event.preventDefault();
-        onBack();
-        return;
-      }
-      event.preventDefault();
+      else onBack();
     };
-    window.addEventListener('androidback', handleAndroidBack);
-    return () => window.removeEventListener('androidback', handleAndroidBack);
+    window.addEventListener('androidback', handleAndroidBack, true);
+    return () => window.removeEventListener('androidback', handleAndroidBack, true);
   }, [docViewerState, videoViewerUrl, photoViewerState, showGpsCamera, showPhotoCrop, showNavSettings, showDeleteMediaConfirm, showDeleteCustomerConfirm, onBack]);
 
   useEffect(() => {
@@ -653,7 +647,7 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                 </div>
               </div>
 
-              <div className={`grid gap-2.5 ${mediaSubTab === 0 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`}>
+              <div className={`grid gap-2.5 ${mediaSubTab === 0 ? 'grid-cols-2' : 'grid-cols-2'}`}>
                 <button
                   type="button"
                   onClick={() => attachInputRef.current?.click()}
@@ -662,16 +656,6 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
                   <Plus className="w-4 h-4" />
                   Attach {mediaSubTab === 0 ? 'Photos' : 'Videos'}
                 </button>
-                {mediaSubTab === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowPhotoScanner(true)}
-                    className="py-2.5 px-3.5 rounded-xl bg-[#1A73E8] text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#1765CC] shadow-sm"
-                  >
-                    <ScanLine className="w-4 h-4" />
-                    Scan Photo
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -1020,24 +1004,6 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
           onSaveCropped={async (blob) => {
             const uri = await saveMediaBlob(blob, `profile_${Date.now()}.jpg`, 'image/jpeg');
             await onCustomerUpdate({ ...customer, photoUri: uri });
-          }}
-        />
-      )}
-
-      {/* Google Drive Photo Scanner Modal */}
-      {showPhotoScanner && (
-        <DocumentScannerModal
-          docTitle={`${customer.name} Photo`}
-          scanKind="photo"
-          onClose={() => setShowPhotoScanner(false)}
-          onSavePhotos={async (scannedPhotos) => {
-            const addedUris: string[] = [];
-            for (const item of scannedPhotos) {
-              const uri = await saveMediaBlob(item.blob, item.fileName, 'image/jpeg');
-              addedUris.push(uri);
-            }
-            const next = Array.from(new Set([...photoList, ...addedUris])).join('|');
-            await onCustomerUpdate({ ...customer, photos: next });
           }}
         />
       )}
