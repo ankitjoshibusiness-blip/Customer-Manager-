@@ -132,7 +132,6 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   const [error, setError] = React.useState('');
   const [rendering, setRendering] = React.useState(false);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
-  const pageHostRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     if (!isPdf) return;
@@ -273,7 +272,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
           </div>
         )}
 
-        <main ref={pageHostRef} className="flex-1 min-h-0 overflow-auto flex items-start justify-center p-3 sm:p-6">
+        <main className="flex-1 min-h-0 overflow-auto flex items-start justify-center p-3 sm:p-6">
           {isImage ? (
             <img src={url} alt={name} className="max-w-full max-h-full object-contain bg-white shadow-lg" />
           ) : isPdf ? (
