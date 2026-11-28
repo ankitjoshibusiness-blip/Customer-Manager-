@@ -423,6 +423,17 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    const handleAndroidBack = (event: Event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (selectedTab > 0) setSelectedTab((tab) => tab - 1);
+      else onDismiss();
+    };
+    window.addEventListener('androidback', handleAndroidBack, true);
+    return () => window.removeEventListener('androidback', handleAndroidBack, true);
+  }, [selectedTab, onDismiss]);
+
   const isEmailValid = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 
   const handleSave = async () => {
