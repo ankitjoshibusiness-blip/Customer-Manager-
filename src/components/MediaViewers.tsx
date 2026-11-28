@@ -107,6 +107,7 @@ export const VideoViewerModal: React.FC<VideoViewerModalProps> = ({ url, onClose
   const [muted,setMuted] = useState(false);
   const [speed,setSpeed] = useState(1);
   const [isFullscreen,setIsFullscreen] = useState(false);
+  const [playbackError,setPlaybackError] = useState('');
 
   useEffect(() => {
     const video=videoRef.current;
@@ -123,7 +124,7 @@ export const VideoViewerModal: React.FC<VideoViewerModalProps> = ({ url, onClose
     return ()=>{window.removeEventListener('keydown',onKey);document.removeEventListener('fullscreenchange',onFullscreen);};
   },[onClose]);
 
-  const togglePlay=()=>{const v=videoRef.current;if(!v)return;if(v.paused)void v.play();else v.pause();};
+  const togglePlay=()=>{const v=videoRef.current;if(!v)return;if(v.paused){setPlaybackError('');void v.play().catch((error: unknown)=>setPlaybackError(error instanceof Error ? error.message : 'Video playback failed. Tap play again or check the video format.'));}else v.pause();};
   const toggleFullscreen=async()=>{const v=videoRef.current;if(!v)return;try{if(!document.fullscreenElement)await v.parentElement?.requestFullscreen();else await document.exitFullscreen();}catch{/* Fullscreen may be unavailable in some WebViews. */}};
 
   return (
@@ -141,14 +142,19 @@ export const VideoViewerModal: React.FC<VideoViewerModalProps> = ({ url, onClose
             ref={videoRef}
             src={url}
             controls
-            autoPlay
             playsInline
-            onPlay={()=>setPlaying(true)}
+            preload="metadata"
+            muted={false}
+            onLoadedMetadata={(e)=>{e.currentTarget.muted=false;e.currentTarget.volume=1;setMuted(false);setPlaybackError('');}}
+            onCanPlay={()=>setPlaybackError('')}
+            onError={(e)=>{const code=e.currentTarget.error?.code;setPlaybackError(code===4?'This video format or audio codec is not supported by this Android device.':'Unable to play this video. Check the file and try again.');setPlaying(false);}}
+            onPlay={()=>{setPlaying(true);setPlaybackError('');}}
             onPause={()=>setPlaying(false)}
             onVolumeChange={(e)=>setMuted(e.currentTarget.muted || e.currentTarget.volume===0)}
             className="max-w-full max-h-full w-full h-full object-contain"
           />
-          {!playing && <button type="button" onClick={togglePlay} aria-label="Play video" className="absolute p-4 rounded-full bg-black/55 hover:bg-black/75"><Play className="w-8 h-8 fill-current" /></button>}
+          {playbackError && <div className="absolute bottom-4 left-3 right-3 mx-auto max-w-lg rounded-xl bg-black/85 border border-white/15 p-3 text-center text-xs text-red-200">{playbackError}</div>}
+          {!playing && !playbackError && <button type="button" onClick={togglePlay} aria-label="Play video" className="absolute p-4 rounded-full bg-black/55 hover:bg-black/75"><Play className="w-8 h-8 fill-current" /></button>}
         </div>
       </main>
       <footer className="shrink-0 flex items-center justify-center gap-3 px-4 py-3 bg-gradient-to-t from-black/80 to-transparent">
