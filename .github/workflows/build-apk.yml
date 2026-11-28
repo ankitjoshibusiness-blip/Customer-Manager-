@@ -299,7 +299,7 @@ jobs:
               if permission not in manifest_text:
                   manifest_text = manifest_text.replace(
                       "<application",
-                      f'    <uses-permission android:name="{permission}" />\\n<application',
+                      f'    <uses-permission android:name="{permission}" />\n<application',
                       1
                   )
           manifest.write_text(manifest_text)
