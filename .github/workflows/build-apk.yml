@@ -58,6 +58,17 @@ jobs:
           mkdir source
           unzip -q CustomerManager_AndroidStudio.zip -d source
 
+      - name: Inspect native startup source for crash diagnosis
+        run: |
+          SETTINGS="$(find "$GITHUB_WORKSPACE/source" -type f -name settings.gradle.kts -print -quit)"
+          PROJECT_DIR="$(dirname "$SETTINGS")"
+          echo "===== MAIN ACTIVITY SOURCE ====="
+          sed -n '1,320p' "$PROJECT_DIR/app/src/main/java/com/customermanager/app/MainActivity.kt"
+          echo "===== ANDROID MANIFEST ====="
+          cat "$PROJECT_DIR/app/src/main/AndroidManifest.xml"
+          echo "===== APP GRADLE ====="
+          cat "$PROJECT_DIR/app/build.gradle.kts"
+
       - name: Build updated web app and apply Android Back handling
         run: |
           set -e
