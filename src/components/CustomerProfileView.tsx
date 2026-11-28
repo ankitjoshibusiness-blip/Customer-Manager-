@@ -125,6 +125,8 @@ export const CustomerProfileView: React.FC<CustomerProfileViewProps> = ({
   // Capture the device Back event before the app-level fallback handler.
   useEffect(() => {
     const handleAndroidBack = (event: Event) => {
+      // A customer form is layered above this profile and must receive Back first.
+      if (document.querySelector('[data-customer-form-modal="true"]')) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if (docViewerState) setDocViewerState(null);
