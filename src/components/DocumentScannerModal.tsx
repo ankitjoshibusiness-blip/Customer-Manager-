@@ -232,9 +232,7 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
     const handleAndroidBack = (event: Event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (cropEditing) {
-        setCropEditing(false);
-      } else if (mode === 'review' && reviewSubMode === 'crop') {
+      if (mode === 'review' && reviewSubMode === 'crop') {
         setReviewSubMode('preview');
       } else {
         stopCamera();
@@ -243,7 +241,7 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
     };
     window.addEventListener('androidback', handleAndroidBack, true);
     return () => window.removeEventListener('androidback', handleAndroidBack, true);
-  }, [cropEditing, mode, reviewSubMode, stopCamera, onClose]);
+  }, [mode, reviewSubMode, stopCamera, onClose]);
 
   const toggleTorch = async () => {
     const track = streamRef.current?.getVideoTracks()[0];
@@ -897,14 +895,6 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
                   className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold"
                 >
                   Retry Camera
-                </button>
-                <button
-                  type="button"
-                  onClick={() => nativeCameraInputRef.current?.click()}
-                  className="px-4 py-2.5 rounded-full bg-[#1A73E8] hover:bg-[#1765CC] text-xs font-bold flex items-center gap-1.5"
-                >
-                  <Camera className="w-4 h-4" />
-                  Phone Camera
                 </button>
                 <button
                   type="button"
