@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Camera, Loader2, X } from 'lucide-react';
 
 declare global {
@@ -34,6 +34,10 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
 }) => {
   const [status, setStatus] = useState('Opening Google Document Scanner…');
   const [error, setError] = useState('');
+  const onCloseRef = useRef(onClose);
+  const onSavePdfRef = useRef(onSavePdf);
+  onCloseRef.current = onClose;
+  onSavePdfRef.current = onSavePdf;
 
   useEffect(() => {
     let active = true;
@@ -60,8 +64,8 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
           bytes[i] = binary.charCodeAt(i);
         }
         const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
-        await onSavePdf(pdfBlob, Math.max(1, Number(detail.pageCount) || 1));
-        if (active) onClose();
+        await onSavePdfRef.current(pdfBlob, Math.max(1, Number(detail.pageCount) || 1));
+        if (active) onCloseRef.current();
       } catch (saveError) {
         if (!active) return;
         setError(saveError instanceof Error ? saveError.message : 'Could not save scanned PDF.');
@@ -70,7 +74,7 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
     };
 
     const handleCancelled = () => {
-      if (active) onClose();
+      if (active) onCloseRef.current();
     };
 
     window.addEventListener('nativeDocumentScanResult', handleResult);
@@ -93,7 +97,7 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
       window.removeEventListener('nativeDocumentScanResult', handleResult);
       window.removeEventListener('nativeDocumentScanCancelled', handleCancelled);
     };
-  }, [onClose, onSavePdf]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/55 flex items-center justify-center p-4">
