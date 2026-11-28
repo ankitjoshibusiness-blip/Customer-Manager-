@@ -44,8 +44,11 @@ export function App() {
   // Route the physical Android Back button through the app's screen stack.
   useEffect(() => {
     const handleAndroidBack = (event: Event) => {
-      if (selectedId !== null) return; // The customer profile handles its own overlays.
-      if (showForm) {
+      if (selectedId !== null) {
+        // Safety fallback: never let Android close the app while a customer is open.
+        event.preventDefault();
+        setSelectedId(null);
+      } else if (showForm) {
         event.preventDefault();
         setShowForm(false);
         setEditingCustomer(null);
