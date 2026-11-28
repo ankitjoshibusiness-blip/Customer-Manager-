@@ -292,15 +292,17 @@ jobs:
           # Register only foreground location access; do not request location at app launch.
           manifest = app / "src/main/AndroidManifest.xml"
           manifest_text = manifest.read_text()
-          if "android.permission.ACCESS_FINE_LOCATION" not in manifest_text:
-              manifest_text = manifest_text.replace(
-                  "<application",
-                  '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
-                  '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
-                  '<application',
-                  1
-              )
-              manifest.write_text(manifest_text)
+          for permission in (
+              "android.permission.ACCESS_FINE_LOCATION",
+              "android.permission.ACCESS_COARSE_LOCATION",
+          ):
+              if permission not in manifest_text:
+                  manifest_text = manifest_text.replace(
+                      "<application",
+                      f'    <uses-permission android:name="{permission}" />\\n<application',
+                      1
+                  )
+          manifest.write_text(manifest_text)
 
           bridge_marker = '            addJavascriptInterface(AndroidDocumentScanner(), "AndroidDocumentScanner")'
           app_bridge = bridge_marker + '\n            addJavascriptInterface(AndroidApp(), "AndroidApp")'
