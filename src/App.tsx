@@ -47,6 +47,7 @@ export function App() {
       if (selectedId !== null) {
         // Safety fallback: never let Android close the app while a customer is open.
         event.preventDefault();
+        event.stopImmediatePropagation();
         setSelectedId(null);
       } else if (showForm) {
         event.preventDefault();
